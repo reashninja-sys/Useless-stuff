@@ -48,11 +48,21 @@ class CupraBatteryView extends WatchUi.View {
     }
 
     function fetchData() as Void {
-        var raw = Application.Properties.getValue("ServerUrl");
-        var serverUrl = (raw instanceof Lang.String) ? raw as Lang.String : "";
+        var rawUrl = Application.Properties.getValue("ServerUrl");
+        var serverUrl = (rawUrl instanceof Lang.String) ? rawUrl as Lang.String : "";
+
+        var rawKey = Application.Properties.getValue("ApiKey");
+        var apiKey = (rawKey instanceof Lang.String) ? rawKey as Lang.String : "";
 
         if (serverUrl.length() == 0) {
             _errorMsg = "Set Server URL\nin Garmin Connect";
+            _isLoading = false;
+            WatchUi.requestUpdate();
+            return;
+        }
+
+        if (apiKey.length() == 0) {
+            _errorMsg = "Set Api Key\nin Garmin Connect";
             _isLoading = false;
             WatchUi.requestUpdate();
             return;
@@ -73,7 +83,10 @@ class CupraBatteryView extends WatchUi.View {
             {
                 :method       => Communications.HTTP_REQUEST_METHOD_GET,
                 :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON,
-                :headers      => { "Accept" => "application/json" },
+                :headers      => {
+                    "Accept"    => "application/json",
+                    "X-Api-Key" => apiKey,
+                },
             },
             method(:onReceive)
         );
