@@ -1,0 +1,222 @@
+import Toybox.Application;
+import Toybox.Communications;
+import Toybox.Graphics;
+import Toybox.Lang;
+import Toybox.Timer;
+import Toybox.WatchUi;
+
+class CupraBatteryView extends WatchUi.View {
+
+    // How often to auto-refresh (ms) — 5 minutes
+    private const REFRESH_INTERVAL_MS = 300000;
+
+    // Cupra brand red
+    private const CUPRA_RED = 0xCC0000;
+
+    private var _batteryLevel  as Lang.Number?    = null;
+    private var _rangeKm       as Lang.Number?    = null;
+    private var _charging      as Lang.Boolean    = false;
+    private var _chargingState as Lang.String?    = null;
+    private var _lastUpdated   as Lang.String     = "--:--";
+    private var _isLoading     as Lang.Boolean    = false;
+    private var _errorMsg      as Lang.String?    = null;
+    private var _timer         as Timer.Timer;
+
+    function initialize() {
+        View.initialize();
+        _timer = new Timer.Timer();
+    }
+
+    function onLayout(dc as Graphics.Dc) as Void {}
+
+    function onShow() as Void {
+        fetchData();
+        _timer.start(method(:onTimerTick), REFRESH_INTERVAL_MS, true);
+    }
+
+    function onHide() as Void {
+        _timer.stop();
+    }
+
+    function onTimerTick() as Void {
+        fetchData();
+    }
+
+    // Called by the delegate on tap/button press
+    function manualRefresh() as Void {
+        fetchData();
+    }
+
+    function fetchData() as Void {
+        var raw = Application.Properties.getValue("ServerUrl");
+        var serverUrl = (raw instanceof Lang.String) ? raw as Lang.String : "";
+
+        if (serverUrl.length() == 0) {
+            _errorMsg = "Set Server URL\nin Garmin Connect";
+            _isLoading = false;
+            WatchUi.requestUpdate();
+            return;
+        }
+
+        // Normalise trailing slash then append endpoint
+        var base = serverUrl;
+        if (base.substring(base.length() - 1, base.length()).equals("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+
+        _isLoading = true;
+        WatchUi.requestUpdate();
+
+        Communications.makeWebRequest(
+            base + "/battery",
+            null,
+            {
+                :method       => Communications.HTTP_REQUEST_METHOD_GET,
+                :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON,
+                :headers      => { "Accept" => "application/json" },
+            },
+            method(:onReceive)
+        );
+    }
+
+    function onReceive(
+        responseCode as Lang.Number,
+        data         as Lang.Dictionary or Lang.String or Null
+    ) as Void {
+        _isLoading = false;
+
+        if (responseCode == 200 && data instanceof Lang.Dictionary) {
+            var d = data as Lang.Dictionary;
+            _batteryLevel  = d["battery_level"] as Lang.Number?;
+            _rangeKm       = d["range_km"]       as Lang.Number?;
+            _chargingState = d["charging_state"] as Lang.String?;
+            var chVal      = d["charging"];
+            _charging      = (chVal instanceof Lang.Boolean) ? chVal as Lang.Boolean : false;
+            var lu         = d["last_updated"];
+            _lastUpdated   = (lu instanceof Lang.String) ? lu as Lang.String : "--:--";
+            _errorMsg      = null;
+        } else if (responseCode == -2) {
+            _errorMsg = "No connection";
+        } else if (responseCode == 503) {
+            _errorMsg = "Server error\n(check logs)";
+        } else {
+            _errorMsg = "HTTP " + responseCode.toString();
+        }
+
+        WatchUi.requestUpdate();
+    }
+
+    // ----------------------------------------------------------------- drawing
+
+    function onUpdate(dc as Graphics.Dc) as Void {
+        var w  = dc.getWidth();
+        var h  = dc.getHeight();
+        var cx = w / 2;
+        var cy = h / 2;
+
+        dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_BLACK);
+        dc.clear();
+
+        if (_isLoading) {
+            _centreText(dc, cx, cy, Graphics.FONT_MEDIUM, "Loading...", Graphics.COLOR_WHITE);
+            return;
+        }
+
+        if (_errorMsg != null) {
+            _centreText(dc, cx, cy - 12, Graphics.FONT_SMALL, _errorMsg as Lang.String, Graphics.COLOR_RED);
+            dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(cx, cy + 28, Graphics.FONT_XTINY, "Tap to retry", Graphics.TEXT_JUSTIFY_CENTER);
+            return;
+        }
+
+        // Brand header
+        dc.setColor(CUPRA_RED, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(cx, 32, Graphics.FONT_SMALL, "CUPRA", Graphics.TEXT_JUSTIFY_CENTER);
+
+        if (_batteryLevel == null) {
+            _centreText(dc, cx, cy, Graphics.FONT_MEDIUM, "No data", Graphics.COLOR_LT_GRAY);
+            return;
+        }
+
+        var pct   = _batteryLevel as Lang.Number;
+        var color = _batteryColor(pct);
+
+        // Large percentage number
+        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(cx, cy - 28, Graphics.FONT_NUMBER_HOT, pct.toString() + "%",
+            Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+
+        // Battery bar graphic
+        _drawBatteryBar(dc, cx, cy + 52, pct, color);
+
+        // Range estimate
+        if (_rangeKm != null) {
+            dc.setColor(Graphics.COLOR_LT_GRAY, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(cx, cy + 76, Graphics.FONT_XTINY,
+                (_rangeKm as Lang.Number).toString() + " km range",
+                Graphics.TEXT_JUSTIFY_CENTER);
+        }
+
+        // Charging status
+        if (_charging) {
+            var label = "Charging";
+            if (_chargingState != null) {
+                label = _chargingState as Lang.String;
+            }
+            dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
+            dc.drawText(cx, cy + 92, Graphics.FONT_XTINY, label, Graphics.TEXT_JUSTIFY_CENTER);
+        }
+
+        // Timestamp footer
+        dc.setColor(Graphics.COLOR_DK_GRAY, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(cx, h - 28, Graphics.FONT_XTINY, "Updated " + _lastUpdated,
+            Graphics.TEXT_JUSTIFY_CENTER);
+    }
+
+    private function _centreText(
+        dc    as Graphics.Dc,
+        x     as Lang.Number,
+        y     as Lang.Number,
+        font  as Graphics.FontType,
+        text  as Lang.String,
+        color as Lang.Number
+    ) as Void {
+        dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+        dc.drawText(x, y, font, text,
+            Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+    }
+
+    private function _batteryColor(level as Lang.Number) as Lang.Number {
+        if (level > 60) { return Graphics.COLOR_GREEN; }
+        if (level > 20) { return Graphics.COLOR_YELLOW; }
+        return Graphics.COLOR_RED;
+    }
+
+    private function _drawBatteryBar(
+        dc    as Graphics.Dc,
+        cx    as Lang.Number,
+        y     as Lang.Number,
+        level as Lang.Number,
+        color as Lang.Number
+    ) as Void {
+        var bw   = 100;  // bar body width
+        var bh   = 18;   // bar height
+        var tipW = 5;    // positive terminal nub
+        var left = cx - bw / 2;
+        var top  = y - bh / 2;
+
+        // Outline
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        dc.drawRectangle(left, top, bw, bh);
+
+        // Positive terminal nub
+        dc.fillRectangle(left + bw, top + bh / 4, tipW, bh / 2);
+
+        // Fill proportional to charge level
+        var fillW = (bw - 4) * level / 100;
+        if (fillW > 0) {
+            dc.setColor(color, Graphics.COLOR_TRANSPARENT);
+            dc.fillRectangle(left + 2, top + 2, fillW, bh - 4);
+        }
+    }
+}
