@@ -1,13 +1,16 @@
 """
 Lightweight HTTP server that the Garmin widget polls for Cupra battery data.
-Binds to 127.0.0.1 (localhost only) — nothing outside this phone can connect.
-The Garmin watch reaches it via Garmin Connect Mobile's built-in HTTP proxy.
 
-Run with:  python server.py
+Binds to 0.0.0.0 by default so Garmin Connect Mobile's HTTP proxy can reach
+it whether it resolves as localhost or via the phone's LAN IP.
+The API key is the security layer — every request without it gets a 403.
+
+Run:  python3 server.py
 """
 
 import os
 import time
+import socket
 import logging
 import threading
 from datetime import datetime
@@ -27,38 +30,44 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
-USERNAME = os.environ["CUPRA_USERNAME"]
-PASSWORD = os.environ["CUPRA_PASSWORD"]
-VIN      = os.environ["CUPRA_VIN"]
-API_KEY  = os.environ["API_KEY"]          # shared secret; same value goes in widget settings
+USERNAME  = os.environ["CUPRA_USERNAME"]
+PASSWORD  = os.environ["CUPRA_PASSWORD"]
+VIN       = os.environ["CUPRA_VIN"]
+API_KEY   = os.environ["API_KEY"]
 CACHE_TTL = int(os.environ.get("CACHE_TTL", "300"))
 PORT      = int(os.environ.get("PORT", "5000"))
+BIND_HOST = os.environ.get("BIND_HOST", "0.0.0.0")
 
-
-@app.before_request
-def check_api_key() -> None:
-    if request.path == "/health":
-        return  # health check doesn't need a key (it reveals nothing sensitive)
-    if request.headers.get("X-Api-Key") != API_KEY:
-        logger.warning("Rejected request from %s — bad or missing API key", request.remote_addr)
-        abort(403)
-
-_client: CupraClient = CupraClient(USERNAME, PASSWORD, VIN)
+_client = CupraClient(USERNAME, PASSWORD, VIN)
 _cache: dict = {
-    "battery_level": None,
-    "range_km": None,
-    "charging": False,
+    "battery_level":  None,
+    "range_km":       None,
+    "charging":       False,
     "charging_state": None,
-    "last_updated": "--:--",
-    "last_fetch": 0.0,
-    "error": None,
+    "last_updated":   "--:--",
+    "last_fetch":     0.0,
+    "error":          None,
 }
 _lock = threading.Lock()
 
 
+# ── security ──────────────────────────────────────────────────────────────────
+
+@app.before_request
+def check_api_key() -> None:
+    """All endpoints except /ping require a valid X-Api-Key header."""
+    if request.path in ("/ping", "/health"):
+        return
+    if request.headers.get("X-Api-Key") != API_KEY:
+        logger.warning("Rejected — bad/missing key from %s", request.remote_addr)
+        abort(403)
+
+
+# ── data fetching ─────────────────────────────────────────────────────────────
+
 def _fetch() -> None:
     data = _client.get_battery_status()
-    now = datetime.now().strftime("%H:%M")
+    now  = datetime.now().strftime("%H:%M")
     with _lock:
         _cache.update(
             battery_level=data["battery_level"],
@@ -71,14 +80,29 @@ def _fetch() -> None:
         )
     logger.info(
         "Battery %s%%  range %skm  charging=%s",
-        data["battery_level"],
-        data["range_km"],
-        data["charging"],
+        data["battery_level"], data["range_km"], data["charging"],
     )
+
+
+# ── endpoints ─────────────────────────────────────────────────────────────────
+
+@app.route("/ping")
+def ping():
+    """No auth needed — use this from your phone browser to confirm the server is reachable."""
+    return jsonify({"ok": True, "server": "cupra-battery"})
+
+
+@app.route("/health")
+def health():
+    """No auth. Returns cache age."""
+    with _lock:
+        age = time.time() - _cache["last_fetch"]
+    return jsonify({"status": "ok", "cache_age_s": round(age)})
 
 
 @app.route("/battery")
 def battery():
+    """Main endpoint polled by the Garmin widget."""
     with _lock:
         stale = time.time() - _cache["last_fetch"] > CACHE_TTL
 
@@ -90,7 +114,7 @@ def battery():
             with _lock:
                 _cache["error"] = str(exc)
         except Exception as exc:
-            logger.exception("Unexpected fetch error")
+            logger.exception("Unexpected error fetching battery data")
             with _lock:
                 _cache["error"] = str(exc)
 
@@ -99,24 +123,17 @@ def battery():
             return jsonify({"error": _cache["error"]}), 503
 
         return jsonify({
-            "battery_level": _cache["battery_level"] or 0,
-            "range_km": _cache["range_km"],
-            "charging": _cache["charging"],
+            "battery_level":  _cache["battery_level"] or 0,
+            "range_km":       _cache["range_km"],
+            "charging":       _cache["charging"],
             "charging_state": _cache["charging_state"],
-            "last_updated": _cache["last_updated"],
+            "last_updated":   _cache["last_updated"],
         })
-
-
-@app.route("/health")
-def health():
-    with _lock:
-        age = time.time() - _cache["last_fetch"]
-    return jsonify({"status": "ok", "cache_age_s": round(age)})
 
 
 @app.route("/refresh")
 def refresh():
-    """Force a fresh fetch (useful for testing)."""
+    """Force a fresh Cupra API call (for testing from browser)."""
     try:
         _fetch()
     except Exception as exc:
@@ -125,12 +142,37 @@ def refresh():
         return jsonify({"battery_level": _cache["battery_level"], "ok": True})
 
 
+# ── startup ───────────────────────────────────────────────────────────────────
+
+def _lan_ip() -> str:
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "YOUR_PHONE_IP"
+
+
 if __name__ == "__main__":
-    logger.info("Performing initial Cupra data fetch...")
+    logger.info("Performing initial Cupra data fetch …")
     try:
         _fetch()
     except Exception as exc:
         logger.warning("Initial fetch failed (will retry on first request): %s", exc)
 
-    logger.info("Starting server on http://127.0.0.1:%d  (localhost only)", PORT)
-    app.run(host="127.0.0.1", port=PORT, debug=False)
+    lan_ip = _lan_ip()
+    print()
+    print("=" * 54)
+    print("  Cupra battery server is running")
+    print()
+    print("  ➜  Set this in Garmin Connect widget settings:")
+    print(f"     Server URL:  http://{lan_ip}:{PORT}")
+    print()
+    print("  ➜  Test from your phone browser (no key needed):")
+    print(f"     http://{lan_ip}:{PORT}/ping")
+    print("=" * 54)
+    print()
+
+    app.run(host=BIND_HOST, port=PORT, debug=False)

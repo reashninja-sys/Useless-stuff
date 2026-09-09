@@ -100,18 +100,42 @@ class CupraBatteryView extends WatchUi.View {
 
         if (responseCode == 200 && data instanceof Lang.Dictionary) {
             var d = data as Lang.Dictionary;
-            _batteryLevel  = d["battery_level"] as Lang.Number?;
-            _rangeKm       = d["range_km"]       as Lang.Number?;
-            _chargingState = d["charging_state"] as Lang.String?;
-            var chVal      = d["charging"];
-            _charging      = (chVal instanceof Lang.Boolean) ? chVal as Lang.Boolean : false;
-            var lu         = d["last_updated"];
-            _lastUpdated   = (lu instanceof Lang.String) ? lu as Lang.String : "--:--";
-            _errorMsg      = null;
+
+            // battery_level — integer percentage
+            var batRaw = d["battery_level"];
+            _batteryLevel = (batRaw instanceof Lang.Number) ? (batRaw as Lang.Number) : null;
+
+            // range_km — may come back as float; convert to integer km
+            var rangeRaw = d["range_km"];
+            if (rangeRaw instanceof Lang.Number) {
+                _rangeKm = rangeRaw as Lang.Number;
+            } else if (rangeRaw instanceof Lang.Float) {
+                _rangeKm = (rangeRaw as Lang.Float).toNumber();
+            } else {
+                _rangeKm = null;
+            }
+
+            // charging — boolean
+            var chVal = d["charging"];
+            _charging = (chVal instanceof Lang.Boolean) ? (chVal as Lang.Boolean) : false;
+
+            // charging_state — raw API string, used for display label
+            var stateRaw = d["charging_state"];
+            _chargingState = (stateRaw instanceof Lang.String) ? (stateRaw as Lang.String) : null;
+
+            // last_updated — "HH:MM" string
+            var luRaw = d["last_updated"];
+            _lastUpdated = (luRaw instanceof Lang.String) ? (luRaw as Lang.String) : "--:--";
+
+            _errorMsg = null;
+        } else if (responseCode == 403) {
+            _errorMsg = "Wrong API key\ncheck settings";
+        } else if (responseCode == -1) {
+            _errorMsg = "Request timed out";
         } else if (responseCode == -2) {
-            _errorMsg = "No connection";
+            _errorMsg = "No connection\nto phone";
         } else if (responseCode == 503) {
-            _errorMsg = "Server error\n(check logs)";
+            _errorMsg = "Server error\n(check Termux)";
         } else {
             _errorMsg = "HTTP " + responseCode.toString();
         }
@@ -172,12 +196,10 @@ class CupraBatteryView extends WatchUi.View {
 
         // Charging status
         if (_charging) {
-            var label = "Charging";
-            if (_chargingState != null) {
-                label = _chargingState as Lang.String;
-            }
             dc.setColor(Graphics.COLOR_YELLOW, Graphics.COLOR_TRANSPARENT);
-            dc.drawText(cx, cy + 92, Graphics.FONT_XTINY, label, Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(cx, cy + 92, Graphics.FONT_XTINY,
+                _chargeLabel(_chargingState),
+                Graphics.TEXT_JUSTIFY_CENTER);
         }
 
         // Timestamp footer
@@ -197,6 +219,16 @@ class CupraBatteryView extends WatchUi.View {
         dc.setColor(color, Graphics.COLOR_TRANSPARENT);
         dc.drawText(x, y, font, text,
             Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+    }
+
+    private function _chargeLabel(state as Lang.String?) as Lang.String {
+        if (state == null) { return "Charging"; }
+        var s = state as Lang.String;
+        if (s.equals("CHARGING"))                { return "Charging"; }
+        if (s.equals("CONSERVATION"))            { return "Conservation"; }
+        if (s.equals("CHARGE_PURPOSE_REACHED"))  { return "Charge complete"; }
+        if (s.equals("READY_FOR_CHARGING"))      { return "Ready to charge"; }
+        return "Charging";
     }
 
     private function _batteryColor(level as Lang.Number) as Lang.Number {
