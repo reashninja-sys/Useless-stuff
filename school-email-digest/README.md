@@ -54,6 +54,16 @@ daily. This README is the human-readable record of what that Routine does.
   idempotent insurance rather than a one-off setup step. If it fails (no
   network), the run still completes — attachments just fall back to
   filename-only for that day, noted once in the digest.
+- **"View original email" links:** built from each message's real
+  `Message-ID` header as a Gmail `rfc822msgid:` search link
+  (`https://mail.google.com/mail/u/0/#search/rfc822msgid%3A...`), not
+  Gmail's own `viewUrl`/thread-id link. The `viewUrl` format hung on a
+  "workspaces" redirect for this user, almost certainly a multi-Google-account
+  conflict (`authuser=` fighting a different signed-in identity in the
+  browser, likely a work Workspace account taking priority). The
+  `rfc822msgid` format tested better; not yet fully confirmed on a
+  reliable connection — ask Claude to adjust again if it turns out to
+  misbehave too.
 
 ## One-time historical catch-up
 
