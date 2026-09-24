@@ -10,8 +10,12 @@ A Claude Code Routine runs every day at **5pm UK time** and:
 1. Searches Gmail for new mail from the two schools:
    - **Newborough CofE Primary School** (Cora, Year 4) — domain `newborough.pdet.org.uk`
    - **Arthur Mellows Village College / AMVC** (Eric, Year 11) — domain `bromcomcloud.com`
-     (their contact address is `office@arthurmellows.org`)
-2. Reads each matching email's full body and lists any attachment filenames.
+     (their contact domain is `arthurmellows.org`, e.g. `office@arthurmellows.org`)
+2. Reads each matching email's full body, and for any **PDF attachment**
+   (newsletters, letters — the schools attach most of the real content rather
+   than putting it in the email body) extracts the actual text: pulls the raw
+   MIME via Gmail, decodes the attachment, and reads it with `pypdf`. Scanned
+   (image-only) PDFs fall back to filename-only, since there's no OCR step.
 3. Writes one summary email, grouped into:
    - **Needs your attention** — mentions of Cora, Year 4, Eric, Year 11, GCSEs,
      parents' evening, deadlines, forms/consent slips, payments due, or anything
@@ -38,15 +42,26 @@ daily. This README is the human-readable record of what that Routine does.
 - **Bound to:** this Claude Code session (not a fresh session per run), because
   this org's Routines can't hand Gmail connector access to a freshly spawned
   session — only a session that already holds the connector keeps it.
-- **Gmail label used for tracking:** `School Digest/Processed`
+- **Gmail label used for tracking:** `School Digest/Processed` (id `Label_6`)
+- **Date floor:** the search always adds `after:2026/07/24`, permanently. That
+  was the cutoff for the one-time historical backfill below — mail from
+  before it is intentionally never pulled into a digest, so ~150 older
+  newsletters sitting in the inbox from earlier in the year don't flood the
+  first few runs.
+- **Dependency bootstrap:** each run starts with a quiet
+  `pip install pypdf cffi cryptography`. The container this Routine runs in
+  isn't guaranteed to persist installed packages between days, so this is
+  idempotent insurance rather than a one-off setup step. If it fails (no
+  network), the run still completes — attachments just fall back to
+  filename-only for that day, noted once in the digest.
 
-## Known limitation
+## One-time historical catch-up
 
-The Gmail tools available to the Routine can see attachment **filenames** but
-not their content — there's no PDF/document reader wired in. So newsletters
-and letters that are pure attachments (no body text) get listed by filename
-with a link to the original email, not actually summarized. Worth knowing
-before assuming the digest caught everything inside a PDF.
+Because this had never run before, a backfill covering **24 July – 24
+September 2026** (~54 threads) was sent separately as one larger digest,
+using the same PDF-extraction pipeline, before the daily Routine above took
+over. All of those threads were labeled `School Digest/Processed` afterward,
+so the daily Routine starts clean from today.
 
 ## Tuning what it includes
 
