@@ -262,12 +262,14 @@ input[type=date], input[type=time] { font: inherit; color: var(--ink); backgroun
     const special = id => !!(exceptionFor(id, key(d)) || exceptionFor(id, key(prev)));
     const leave = kSide.filter(id => nightHere(id, prev) && !nightHere(id, d));
     const arrive = kSide.filter(id => !nightHere(id, prev) && nightHere(id, d));
-    if (leave.length) out.push(leave.some(special) ? names(leave) + " go back to their dad's" : "Morning: " + names(leave) + " go to school from ours");
-    if (arrive.length) out.push(arrive.some(special) ? names(arrive) + " come to ours" : "After school: " + names(arrive) + " come to ours");
+    const v = (ids, one, many) => ids.length > 1 ? many : one;
+    if (leave.length) out.push(leave.some(special) ? names(leave) + v(leave, " leaves ours", " leave ours") : "Morning: " + names(leave) + v(leave, " goes", " go") + " to school from ours");
+    if (arrive.length) out.push((arrive.some(special) ? "" : "After school: ") + names(arrive) + v(arrive, " comes", " come") + " to ours");
     const rLeave = KIDS.filter(k => k.side === "R" && nightHere(k.id, prev) && !nightHere(k.id, d)).map(k => k.id);
-    if (rLeave.length) out.push(dow(d) === 5 ? "5:30pm: Reash drops " + names(rLeave) + " back" : names(rLeave) + " go home");
+    if (rLeave.length) out.push(dow(d) === 5 ? "5:30pm: Reash drops " + names(rLeave) + " back" :
+      dow(d) === 6 ? names(rLeave) + v(rLeave, " goes", " go") + " home" : "Morning: " + names(rLeave) + v(rLeave, " goes", " go") + " to school from ours");
     const rArrive = KIDS.filter(k => k.side === "R" && !nightHere(k.id, prev) && nightHere(k.id, d) && special(k.id)).map(k => k.id);
-    if (rArrive.length) out.push(names(rArrive) + " come to ours");
+    if (rArrive.length) out.push(names(rArrive) + v(rArrive, " comes", " come") + " to ours");
     return out;
   }
 
@@ -364,7 +366,7 @@ input[type=date], input[type=time] { font: inherit; color: var(--ink); backgroun
           el("span", { class: "name" }, meal ? meal.name : el("span", { class: "note" }, "Not planned")),
           el("span", { class: "heads" }, dinnerCount(d) + " people"),
           meal ? el("button", { class: "x", "aria-label": "Clear meal", onclick: () => removeDoc("meals", k) }, "×") : null),
-        nightHere("poppy", d) ? el("div", { class: "diet" }, "Poppy's home: pescatarian (fish, no meat)") : null,
+        nightHere("poppy", d) ? el("div", { class: "diet" }, "Poppy's home: veggie version for her, or fish for everyone") : null,
         form));
     }
     return out;
@@ -506,7 +508,7 @@ Rules:
 - Titles are short and plain ("Dentist", "Swimming"), without the child's name (that goes in kids).
 - repeatWeeks: for "every Tuesday" style requests, the number of weekly repeats to create (default 8, max 12, stop before the Christmas holidays if they say term time).
 - meal: ingredients sized for the dinner headcount on that date, in UK supermarket quantities (e.g. "500g", "1 pack"). Leave out salt, pepper, oil and other cupboard basics.
-- Poppy is pescatarian (eats fish, no meat). If Poppy is home that night and the meal contains meat, add a fish or veggie swap for her portion to the meal name (e.g. "Fajitas (Poppy: prawn)") and its ingredients.
+- Poppy is pescatarian (eats fish, no meat). The family still has meat when she's home: if Poppy is home that night and the meal contains meat, keep the meal as asked and add a vegetarian version of the same meal for her (e.g. "Fajitas (veggie for Poppy: halloumi)"), including those extra ingredients. If they ask for fish, that suits everyone.
 - custody: "here": true means the child sleeps at ours on those nights. Use for swaps, holidays and changes. from/to are night dates, inclusive.
 - A question gets one "answer" action, written briefly and warmly, using the 14 days above. Use UK date style.
 - If the message is unclear, return an "answer" asking one short question.`;

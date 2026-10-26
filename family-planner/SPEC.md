@@ -36,7 +36,9 @@ reads it for now and should eventually replace it.
 - **Handovers:** Oli, Poppy and Leo always change over at school. Reash drops
   Eric and Cora back at 5:30pm on Saturdays.
 
-**Diet:** Poppy is pescatarian (fish, no meat). No regular weekly meals.
+**Diet:** Poppy is pescatarian (fish, no meat). The family still has meat when
+she's home: usually a veggie version of the same meal for her, sometimes fish
+for everyone. No regular weekly meals.
 
 **Accounts and Claude access:** Kathy has a free Claude account. An artifact
 owner can invite someone by email as an editor (Pro/Max feature), and that
@@ -50,8 +52,9 @@ main reason to move to Option B later.
 Google Calendar; the shared calendar is shown read-only during the switchover.
 
 **School email routing:** the artifact's school scan reads the Gmail
-connected to Reash's Claude account. Plan: Kathy adds a Gmail filter that
-auto-forwards Northborough and AMVC emails to the inbox Reash's Claude reads.
+connected to Reash's Claude account (reashninja@gmail.com, the same inbox as
+reashninja@googlemail.com). Newborough and AMVC already arrive there.
+Northborough is parked for now; when revisited, Kathy forwards it to that inbox.
 Longer term (Option B), route all school mail to one shared inbox
 (`chaoticgloom@gmail.com` or a dedicated forwarding address).
 
@@ -354,6 +357,23 @@ already in this repo) with the PWA as frontend.
 | Gmail API | OAuth with `gmail.readonly`, query by sender, poll on a schedule | Reads directly, but the restricted scope needs Google verification for a public app, and personal "testing" mode apps have refresh tokens that expire every 7 days |
 
 ---
+
+### How Claude features are billed in Option B
+
+The web app's server calls the Claude API with an API key from an Anthropic
+Console account. It is pay-as-you-go (prepaid credits, with a monthly spend
+limit you set), billed per token, and separate from any Claude Pro/Max
+subscription. Neither of us needs a Claude account to use the app; the key
+never reaches the phones.
+
+Per-token prices (October 2026, per million tokens, input / output):
+Claude Haiku 5.5 $0.10 / $0.50; Claude Sonnet 5.5 $2 / $10; Claude Opus 5.5
+$4 / $20.
+
+Rough estimate for our use: a typed message is about 3,000 tokens in and 300
+out (Haiku: well under 0.1p; Sonnet: about 1p). A daily school-email check is
+about 12,000 in and 1,000 out on Sonnet (about 3p). Twenty messages a day on
+Haiku plus a daily Sonnet email check comes to roughly £1 to £2 a month.
 
 ## 7. Architecture sketch (Option B)
 
