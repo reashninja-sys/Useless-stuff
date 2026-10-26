@@ -33,6 +33,27 @@ reads it for now and should eventually replace it.
 - **Cora:** Thursday and Friday nights; goes home Saturday 5:30pm.
 - Half-terms and holidays are handled as exceptions (the calendar already
   shows entries such as "R kids half term (5.30 pick up)").
+- **Handovers:** Oli, Poppy and Leo always change over at school. Reash drops
+  Eric and Cora back at 5:30pm on Saturdays.
+
+**Diet:** Poppy is pescatarian (fish, no meat). No regular weekly meals.
+
+**Accounts and Claude access:** Kathy has a free Claude account. An artifact
+owner can invite someone by email as an editor (Pro/Max feature), and that
+person can change the shared data. But for anyone invited from outside the
+owner's own account, parts of an artifact that use Claude or connectors don't
+work, even on a paid plan. So in the artifact, only Reash gets typed
+messages, meal ingredients and the school scan; Kathy uses forms. This is the
+main reason to move to Option B later.
+
+**Main calendar:** this app becomes the main calendar. No writing back to
+Google Calendar; the shared calendar is shown read-only during the switchover.
+
+**School email routing:** the artifact's school scan reads the Gmail
+connected to Reash's Claude account. Plan: Kathy adds a Gmail filter that
+auto-forwards Northborough and AMVC emails to the inbox Reash's Claude reads.
+Longer term (Option B), route all school mail to one shared inbox
+(`chaoticgloom@gmail.com` or a dedicated forwarding address).
 
 **Sharing:** strictly the two of us. No co-parent or kids' views.
 
@@ -367,17 +388,13 @@ already in this repo) with the PWA as frontend.
 
 ### Still open after v0.2
 
-1. Handover times for Oli, Poppy and Leo on the 2-2-3 changeover days, and
-   who drops off / collects.
-2. Does Kathy have (or want) a Claude account? The artifact needs one for her
-   to save changes, and uses her own Claude allowance when she adds things by
-   message.
-3. Should the app start writing events to the shared Google Calendar (needs
-   Kathy's account, since Reash's access is read-only), or keep its own events
-   until it fully takes over?
-4. Which inbox do Kathy's kids' schools email? The school scan reads whichever
-   Gmail the person tapping "Check now" has connected.
-5. Any dietary needs or regular meals (e.g. Friday pizza)?
+1. Import future events from the shared Google Calendar into the app once,
+   then stop showing the calendar overlay?
+2. Which inbox should Reash's Claude Gmail connector read: keep
+   `reashninja@googlemail.com` (Kathy forwards to it) or switch it to the shared
+   `chaoticgloom@gmail.com`?
+3. When should we start Option B, given Kathy can't use the Claude features in
+   the artifact?
 
 ### Original v0.1 questions (answered in section 0)
 

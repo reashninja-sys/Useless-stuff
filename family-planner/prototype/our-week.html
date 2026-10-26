@@ -128,6 +128,17 @@ a { color: var(--accent); }
 .confirm ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
 .confirm .acts { display: flex; gap: 8px; flex-wrap: wrap; }
 .answer { font-size: 14px; white-space: pre-wrap; }
+.handover { font-size: 13px; color: var(--muted); display: grid; gap: 2px; }
+.handover div::before { content: "⇄ "; color: var(--accent); }
+.diet { font-size: 12px; color: var(--poppy); }
+input[type=date], input[type=time] { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 6px 8px; min-height: 40px; }
+.manual { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 12px; display: grid; gap: 8px; max-height: 55vh; overflow-y: auto; }
+.manual .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.manual .row > input[type=text] { flex: 1; min-width: 0; }
+.manual fieldset { border: 0; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.manual legend { font-size: 12px; color: var(--muted); padding: 0; margin-bottom: 4px; }
+.pick { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; border: 1px solid var(--line); border-radius: 999px; padding: 3px 9px; }
+.pick input { accent-color: var(--accent); margin: 0; }
 @media (prefers-reduced-motion: no-preference) { .confirm { animation: rise .18s ease-out; } @keyframes rise { from { transform: translateY(6px); opacity: .6; } } }
 </style>
 
@@ -155,9 +166,11 @@ a { color: var(--accent); }
 <div class="say">
   <div class="wrap">
     <div id="confirm" hidden></div>
+    <div id="manual" hidden></div>
     <form class="sayform" id="sayForm" autocomplete="off">
       <input type="text" id="sayInput" placeholder="e.g. Oli dentist next Thu 3:30, Kathy taking him" aria-label="Add anything">
       <button class="btn primary" id="sayBtn" type="submit">Add</button>
+      <button class="btn" id="formBtn" type="button" aria-expanded="false">Form</button>
     </form>
     <div class="hint" id="hint">Type or tap the mic on your keyboard. Events, meals, shopping, swaps, or ask "what's on Saturday?"</div>
   </div>
@@ -241,6 +254,22 @@ a { color: var(--accent); }
     return out;
   }
   const dinnerCount = d => 2 + kidsOn(d).filter(x => x.mode === "night").length;
+  const names = ids => { const n = ids.map(id => KID[id].name); return n.length > 1 ? n.slice(0, -1).join(", ") + " and " + n[n.length - 1] : n[0]; };
+  // Kathy's kids change over at school; Reash drops Eric and Cora back at 5:30pm on Saturdays.
+  function handoversOn(d) {
+    const prev = addDays(d, -1), out = [];
+    const kSide = KIDS.filter(k => k.side === "K").map(k => k.id);
+    const special = id => !!(exceptionFor(id, key(d)) || exceptionFor(id, key(prev)));
+    const leave = kSide.filter(id => nightHere(id, prev) && !nightHere(id, d));
+    const arrive = kSide.filter(id => !nightHere(id, prev) && nightHere(id, d));
+    if (leave.length) out.push(leave.some(special) ? names(leave) + " go back to their dad's" : "Morning: " + names(leave) + " go to school from ours");
+    if (arrive.length) out.push(arrive.some(special) ? names(arrive) + " come to ours" : "After school: " + names(arrive) + " come to ours");
+    const rLeave = KIDS.filter(k => k.side === "R" && nightHere(k.id, prev) && !nightHere(k.id, d)).map(k => k.id);
+    if (rLeave.length) out.push(dow(d) === 5 ? "5:30pm: Reash drops " + names(rLeave) + " back" : names(rLeave) + " go home");
+    const rArrive = KIDS.filter(k => k.side === "R" && !nightHere(k.id, prev) && nightHere(k.id, d) && special(k.id)).map(k => k.id);
+    if (rArrive.length) out.push(names(rArrive) + " come to ours");
+    return out;
+  }
 
   // ---------- Items for a day ----------
   function itemsOn(k) {
@@ -298,6 +327,7 @@ a { color: var(--accent); }
         kids.length
           ? el("div", { class: "kids" }, kids.map(x => kidChip(x.kid, (x.mode === "day" ? "daytime " : "") + (x.changed ? "changed" : ""), x.note || "")))
           : el("div", { class: "nokids" }, "Just the two of you tonight"),
+        (h => h.length ? el("div", { class: "handover" }, h.map(t => el("div", {}, t))) : null)(handoversOn(d)),
         items.length ? el("ul", { class: "items" }, items.map(renderItem)) : null,
         el("div", { class: "dinner" }, el("span", { class: "lbl" }, "Dinner"),
           meal ? el("span", {}, meal.name) : el("span", { class: "none" }, "Not planned"))
@@ -325,6 +355,7 @@ a { color: var(--accent); }
       const form = el("form", { class: "mealform", onsubmit: ev => {
         ev.preventDefault();
         const v = $(inputId).value.trim(); if (!v) return;
+        if (S.noClaude) { db?.doc("meals/" + k).set({ date: k, name: v, ingredients: [], updatedAt: Date.now() }).catch(dbErr); return; }
         interpret("Dinner on " + longDate(d) + ": " + v + ". Add its ingredients to the shopping list.");
       } }, el("input", { type: "text", id: inputId, placeholder: meal ? "Change meal" : "What's for dinner?", "aria-label": "Dinner for " + DAYS[i] }),
         el("button", { class: "btn small", type: "submit" }, "Set"));
@@ -333,6 +364,7 @@ a { color: var(--accent); }
           el("span", { class: "name" }, meal ? meal.name : el("span", { class: "note" }, "Not planned")),
           el("span", { class: "heads" }, dinnerCount(d) + " people"),
           meal ? el("button", { class: "x", "aria-label": "Clear meal", onclick: () => removeDoc("meals", k) }, "×") : null),
+        nightHere("poppy", d) ? el("div", { class: "diet" }, "Poppy's home: pescatarian (fish, no meat)") : null,
         form));
     }
     return out;
@@ -474,6 +506,7 @@ Rules:
 - Titles are short and plain ("Dentist", "Swimming"), without the child's name (that goes in kids).
 - repeatWeeks: for "every Tuesday" style requests, the number of weekly repeats to create (default 8, max 12, stop before the Christmas holidays if they say term time).
 - meal: ingredients sized for the dinner headcount on that date, in UK supermarket quantities (e.g. "500g", "1 pack"). Leave out salt, pepper, oil and other cupboard basics.
+- Poppy is pescatarian (eats fish, no meat). If Poppy is home that night and the meal contains meat, add a fish or veggie swap for her portion to the meal name (e.g. "Fajitas (Poppy: prawn)") and its ingredients.
 - custody: "here": true means the child sleeps at ours on those nights. Use for swaps, holidays and changes. from/to are night dates, inclusive.
 - A question gets one "answer" action, written briefly and warmly, using the 14 days above. Use UK date style.
 - If the message is unclear, return an "answer" asking one short question.`;
@@ -493,7 +526,8 @@ Rules:
       $("sayInput").value = "";
     } catch (e) {
       const c = e?.code;
-      const msg = c === "not_granted" || c === "sampling_disabled" ? "Claude isn't switched on for this page, so messages can't be read. Use the lists and meal boxes directly." :
+      if (c === "not_granted" || c === "sampling_disabled" || c === "not_declared" || c === "capability_disabled") { setNoClaude(); }
+      const msg = c === "not_granted" || c === "sampling_disabled" ? "Typed messages need Claude, which isn't available to you on this page. Use the Form button instead." :
         c === "rate_limited" ? "That's a lot of requests in a short time. Give it a minute and try again." :
         c === "invalid_json" ? "I couldn't turn that into anything. Try saying it a different way." :
         c === "session_expired" ? "You've been signed out of Claude. Sign in again and retry." :
@@ -623,6 +657,64 @@ ${full.map(f => `=== id: ${f.id}\nFrom: ${f.sender}\nDate: ${f.date}\nSubject: $
     } else await setSuggestion(s, idx, "added");
   }
 
+  // ---------- Manual form (works without Claude) ----------
+  function setNoClaude() {
+    S.noClaude = true;
+    $("sayInput").hidden = true; $("sayBtn").hidden = true;
+    $("formBtn").textContent = "Add something"; $("formBtn").classList.add("primary");
+    $("hint").textContent = "Add events and changes with the form. Meals and shopping can be typed straight into their tabs.";
+    render();
+  }
+  function toggleManual(open) {
+    const m = $("manual");
+    open = open ?? m.hidden;
+    $("formBtn").setAttribute("aria-expanded", String(open));
+    if (!open) { m.hidden = true; m.replaceChildren(); return; }
+    hideConfirm();
+    const today = todayKey();
+    const kidPicks = prefix => el("fieldset", {}, el("legend", {}, "Who"), KIDS.map(k =>
+      el("label", { class: "pick" }, el("input", { type: prefix === "sw" ? "radio" : "checkbox", name: prefix + "-kid", value: k.id, id: prefix + "-" + k.id, checked: prefix === "sw" && k.id === "oli" }), k.name)));
+    const kindSel = el("select", { id: "mf-kind", "aria-label": "What to add", onchange: () => {
+      const ev = $("mf-kind").value === "event";
+      $("mf-event").hidden = !ev; $("mf-swap").hidden = ev;
+    } }, el("option", { value: "event" }, "Event"), el("option", { value: "swap" }, "Change who's here"));
+    const eventPart = el("div", { id: "mf-event", style: "display:grid;gap:8px" },
+      el("div", { class: "row" }, el("input", { type: "text", id: "mf-title", placeholder: "What is it?", "aria-label": "Title" })),
+      el("div", { class: "row" },
+        el("input", { type: "date", id: "mf-date", value: today, "aria-label": "Date" }),
+        el("input", { type: "time", id: "mf-time", "aria-label": "Time (optional)" }),
+        el("select", { id: "mf-who", "aria-label": "Who's doing it" }, el("option", { value: "" }, "Who's taking?"), ["Reash", "Kathy", "Both"].map(w => el("option", { value: w }, w)))),
+      kidPicks("ev"));
+    const swapPart = el("div", { id: "mf-swap", style: "display:grid;gap:8px", hidden: true },
+      kidPicks("sw"),
+      el("div", { class: "row" },
+        el("select", { id: "sw-here", "aria-label": "With us or not" }, el("option", { value: "1" }, "With us"), el("option", { value: "0" }, "Not with us")),
+        el("span", { class: "note" }, "nights"), el("input", { type: "date", id: "sw-from", value: today, "aria-label": "First night" }),
+        el("span", { class: "note" }, "to"), el("input", { type: "date", id: "sw-to", value: today, "aria-label": "Last night" })),
+      el("div", { class: "row" }, el("input", { type: "text", id: "sw-note", placeholder: "Note (optional), e.g. half term", "aria-label": "Note" })));
+    const form = el("form", { class: "manual", onsubmit: async ev => {
+      ev.preventDefault();
+      if (!db) { flashHint("Saving isn't available in this view.", true); return; }
+      try {
+        if ($("mf-kind").value === "event") {
+          const title = $("mf-title").value.trim(), date = $("mf-date").value;
+          if (!title || !date) { flashHint("Add a title and a date.", true); return; }
+          const kids = [...document.querySelectorAll('input[name="ev-kid"]:checked')].map(i => i.value);
+          await db.collection("events").add({ title, date, time: $("mf-time").value || null, end: null, kids, who: $("mf-who").value || null, notes: null, series: null, source: "form", createdAt: Date.now() });
+        } else {
+          const kid = document.querySelector('input[name="sw-kid"]:checked')?.value, from = $("sw-from").value, to = $("sw-to").value || from;
+          if (!kid || !from) { flashHint("Pick a child and a date.", true); return; }
+          await db.collection("custody").add({ kid, from, to: to < from ? from : to, here: $("sw-here").value === "1", note: $("sw-note").value.trim() || null, createdAt: Date.now() });
+        }
+        toggleManual(false); flashHint("Saved.");
+      } catch (e) { dbErr(e); }
+    } },
+      el("div", { class: "row" }, kindSel),
+      eventPart, swapPart,
+      el("div", { class: "row" }, el("button", { class: "btn primary small", type: "submit" }, "Save"), el("button", { class: "btn small", type: "button", onclick: () => toggleManual(false) }, "Cancel")));
+    m.replaceChildren(form); m.hidden = false;
+  }
+
   // ---------- Confirm / hint UI ----------
   function showConfirm(node) { const c = $("confirm"); c.replaceChildren(node.classList?.contains("confirm") ? node : el("div", { class: "confirm" }, node, el("div", { class: "acts" }, el("button", { class: "btn small", onclick: hideConfirm }, "OK")))); c.hidden = false; }
   function hideConfirm() { $("confirm").hidden = true; $("confirm").replaceChildren(); S.pending = null; }
@@ -691,6 +783,7 @@ ${full.map(f => `=== id: ${f.id}\nFrom: ${f.sender}\nDate: ${f.date}\nSubject: $
     document.getElementById("d-" + todayKey())?.scrollIntoView({ block: "center", behavior: "smooth" });
   };
   $("sayForm").addEventListener("submit", ev => { ev.preventDefault(); const v = $("sayInput").value.trim(); if (v) interpret(v); });
+  $("formBtn").addEventListener("click", () => toggleManual());
 
   render();
 
@@ -709,7 +802,11 @@ ${full.map(f => `=== id: ${f.id}\nFrom: ${f.sender}\nDate: ${f.date}\nSubject: $
     sub("suggestions", v => S.suggestions = v);
     sub("settings", v => S.settings = v.find(x => x.id === "main") || {});
   });
-  claude.use("sample").then(s => { sample = s; if (!s) { $("sayForm").hidden = true; $("hint").textContent = "Adding by message isn't available here. Use the Meals and Shopping tabs."; } });
+  claude.use("sample").then(s => {
+    sample = s;
+    if (!s) { setNoClaude(); return; }
+    claude.use("permissions").then(p => p?.state("sample")).then(st => { if (st === "denied" || st === "unavailable") setNoClaude(); }).catch(() => {});
+  });
   claude.use("mcp").then(m => { mcp = m; if (m) watchCalendar(); else { S.gcalStatus = ""; render(); } });
 })();
 </script>
