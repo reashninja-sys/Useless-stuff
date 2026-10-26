@@ -1,7 +1,52 @@
 # Family Planner: Product Spec
 
-Status: **Draft v0.1** (open questions in section 9 need answers before v0.2)
+Status: **Draft v0.2** (answers folded in; prototype M0 live as a shared Claude artifact, see `prototype/`)
 Owners: Reash and Kathy
+
+---
+
+## 0. Household facts (confirmed v0.2)
+
+**Phones:** both Android.
+
+**Calendar today:** a shared Google Calendar owned by Kathy (`chaoticgloom@gmail.com`)
+holds custody and family events. Reash's account has read-only access. The app
+reads it for now and should eventually replace it.
+
+**Children**
+
+| Child | Age | School | Year | Parent |
+|-------|-----|--------|------|--------|
+| Cora | 9 | Newborough CofE Primary | Y4 | Reash |
+| Oli | 10 | Northborough Primary | Y6 | Kathy |
+| Poppy | 13 | Arthur Mellows Village College (AMVC) | Y8 | Kathy |
+| Leo | 15 | AMVC | Y11 | Kathy |
+| Eric | 15 | AMVC | Y11 | Reash |
+
+**Custody patterns (nights with us)**
+
+- **Oli, Poppy, Leo:** 2-2-3 on a 14-day cycle. Anchored to Mon 26 Oct 2026
+  (cycle day 0): with us on days 0, 1 (Mon, Tue), 4, 5, 6 (Fri to Sun), 9, 10
+  (Wed, Thu of the second week). Matches the "Kathy kids" entries in the shared
+  calendar.
+- **Eric:** Monday and Friday nights; goes home Saturday 5:30pm.
+- **Cora:** Thursday and Friday nights; goes home Saturday 5:30pm.
+- Half-terms and holidays are handled as exceptions (the calendar already
+  shows entries such as "R kids half term (5.30 pick up)").
+
+**Sharing:** strictly the two of us. No co-parent or kids' views.
+
+**School comms:** mostly direct email. Observed senders:
+`office@newborough.pdet.org.uk` (Newborough), Bromcom (`bromcomcloud.com`,
+AMVC), with bookings via Arbor. Reash already has a "School Digest" Gmail
+automation, which the app should eventually replace.
+
+**Shopping:** Tesco online for the weekly shop; Aldi in person for top-ups.
+The shopping list is split into those two lists, and Tesco's list can be
+copied in a format suited to Tesco's multi-search.
+
+**Hosting decision:** start with Option A (shared Claude artifact) as the
+working app, not just a throwaway prototype.
 
 ---
 
@@ -218,6 +263,14 @@ for voice.
 - **Best for:** validating the UX (does NL capture + custody view actually get
   used?) before investing in a real build.
 
+**As built (M0):** the artifact uses a shared database for events, meals,
+shopping, custody exceptions and email suggestions; Claude (on the viewer's
+own account) to read messages and school emails; the viewer's Google Calendar
+connector to show the shared calendar; and the viewer's Gmail connector for an
+on-demand "Check now" school scan. Voice works through the Android keyboard's
+mic. Claude usage per message is small (one quick request); a school scan is
+one larger request.
+
 ### Option B: Progressive Web App + managed backend (recommended)
 
 A web app that installs to the home screen on both Android and iPhone, backed
@@ -312,7 +365,21 @@ already in this repo) with the PWA as frontend.
 
 ## 9. Open questions
 
-Answers to these will shape v0.2.
+### Still open after v0.2
+
+1. Handover times for Oli, Poppy and Leo on the 2-2-3 changeover days, and
+   who drops off / collects.
+2. Does Kathy have (or want) a Claude account? The artifact needs one for her
+   to save changes, and uses her own Claude allowance when she adds things by
+   message.
+3. Should the app start writing events to the shared Google Calendar (needs
+   Kathy's account, since Reash's access is read-only), or keep its own events
+   until it fully takes over?
+4. Which inbox do Kathy's kids' schools email? The school scan reads whichever
+   Gmail the person tapping "Check now" has connected.
+5. Any dietary needs or regular meals (e.g. Friday pizza)?
+
+### Original v0.1 questions (answered in section 0)
 
 **Phones and accounts**
 1. What phones do you and Kathy have? (If either is an iPhone, that rules out
@@ -356,7 +423,7 @@ Answers to these will shape v0.2.
 
 | # | Milestone | Contents |
 |---|-----------|----------|
-| M0 | Prototype | Artifact: week view, custody strip, NL add, meal grid, shopping list |
+| M0 | Prototype (**live**) | Artifact: week view, custody strip, NL add, meal grid, Tesco/Aldi lists, on-demand school email scan, shared calendar overlay |
 | M1 | Real app foundation | PWA, auth for both of us, Supabase schema, calendar CRUD, realtime sync |
 | M2 | Capture | NL parser with Claude tool calling, voice input, confirmation cards |
 | M3 | Custody | Patterns, exceptions, who's-here views, handover reminders |

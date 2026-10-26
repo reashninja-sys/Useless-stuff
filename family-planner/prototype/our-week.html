@@ -1,0 +1,715 @@
+<title>Our Week</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+/* Layout: phone-first single column. Sticky header (week + tabs), scrolling day cards, fixed "say it" bar at the bottom. */
+:root {
+  --bg: #f3f5f8; --surface: #ffffff; --ink: #18202b; --muted: #5d6878; --line: #dde2ea;
+  --accent: #2f5bd3; --accent-ink: #ffffff; --accent-soft: #e4ebfb;
+  --warn: #b25b00; --ok: #237a4b;
+  --cora: #d9485f; --oli: #12867f; --poppy: #8152c9; --leo: #c27c0e; --eric: #3d7d2f;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --r: 12px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #11151c; --surface: #1a2029; --ink: #e8ecf2; --muted: #98a3b3; --line: #2b3340;
+  --accent: #7d9bf0; --accent-ink: #0d1320; --accent-soft: #233150;
+  --warn: #f0a24a; --ok: #5cc98b;
+  --cora: #f07a8c; --oli: #43c2b9; --poppy: #b18cf0; --leo: #e9a93c; --eric: #7fc46c;
+  color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #11151c; --surface: #1a2029; --ink: #e8ecf2; --muted: #98a3b3; --line: #2b3340;
+  --accent: #7d9bf0; --accent-ink: #0d1320; --accent-soft: #233150;
+  --warn: #f0a24a; --ok: #5cc98b;
+  --cora: #f07a8c; --oli: #43c2b9; --poppy: #b18cf0; --leo: #e9a93c; --eric: #7fc46c;
+  color-scheme: dark; }
+
+* { box-sizing: border-box; }
+html, body { background: var(--bg); color: var(--ink); }
+body { font-family: var(--body); font-size: 15px; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 640px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+button { font: inherit; color: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; }
+
+header { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg); border-bottom: 1px solid var(--line); }
+.top { display: flex; align-items: center; gap: 8px; padding-block: 12px 8px; }
+.top h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; flex: 1; min-width: 0; }
+.nav { display: flex; gap: 4px; }
+.iconbtn { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; min-width: 36px; height: 36px; padding: 0 10px; }
+.tabs { display: flex; gap: 4px; padding-bottom: 8px; overflow-x: auto; }
+.tab { border: 0; background: transparent; padding: 7px 12px; border-radius: 999px; color: var(--muted); font-weight: 700; white-space: nowrap; }
+.tab[aria-selected="true"] { background: var(--ink); color: var(--bg); }
+.tab .count { display: inline-block; min-width: 18px; padding: 0 5px; margin-left: 4px; border-radius: 9px; background: var(--warn); color: #fff; font-size: 12px; }
+
+main { padding-block: 12px 150px; display: grid; gap: 12px; }
+.status { font-size: 13px; color: var(--muted); }
+.status.err { color: var(--warn); }
+
+/* Day cards */
+.day { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 8px; }
+.day.today { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.dayhead { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.dayhead h2 { font-size: 17px; font-weight: 700; }
+.dayhead .date { color: var(--muted); font-size: 13px; }
+.dayhead .heads { margin-left: auto; font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.kids { display: flex; flex-wrap: wrap; gap: 6px; }
+.kid { display: inline-flex; align-items: center; gap: 5px; font-size: 13px; font-weight: 700; padding: 2px 9px 2px 7px; border-radius: 999px; border: 1.5px solid var(--kc); color: var(--kc); }
+.kid::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--kc); }
+.kid.daytime { border-style: dashed; font-weight: 400; }
+.kid.changed { background: var(--accent-soft); }
+.nokids { font-size: 13px; color: var(--muted); }
+.items { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.item { display: grid; grid-template-columns: 52px 1fr auto; gap: 8px; align-items: start; font-size: 14px; }
+.item .t { color: var(--muted); font-variant-numeric: tabular-nums; font-size: 13px; padding-top: 1px; }
+.item .what { min-width: 0; overflow-wrap: anywhere; }
+.item .meta { font-size: 12px; color: var(--muted); }
+.tag { font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; margin-left: 4px; }
+.x { border: 0; background: transparent; color: var(--muted); padding: 0 4px; font-size: 16px; line-height: 1; }
+.dinner { font-size: 14px; display: flex; gap: 8px; align-items: baseline; border-top: 1px dashed var(--line); padding-top: 8px; }
+.dinner .lbl { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); width: 52px; flex: none; }
+.dinner .none { color: var(--muted); }
+
+/* Meals */
+.meal { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 10px 14px; display: grid; gap: 6px; }
+.mealrow { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.mealrow h3 { font-size: 15px; font-weight: 700; width: 92px; flex: none; }
+.mealrow .name { flex: 1; min-width: 0; }
+.mealrow .heads { font-size: 13px; color: var(--muted); }
+.mealform { display: flex; gap: 6px; }
+.mealform input { flex: 1; min-width: 0; }
+
+/* Shopping */
+.shop { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 8px; }
+.shophead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.shophead h2 { font-size: 17px; flex: 1; }
+.shophead .sub { font-size: 13px; color: var(--muted); font-weight: 400; font-family: var(--body); }
+.li { display: flex; align-items: center; gap: 10px; padding: 4px 0; }
+.li input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); flex: none; }
+.li .nm { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.li .q { color: var(--muted); font-size: 13px; }
+.li.done .nm { text-decoration: line-through; color: var(--muted); }
+.swap { font-size: 12px; border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 2px 8px; color: var(--muted); }
+.addrow { display: flex; gap: 6px; }
+.addrow input { flex: 1; min-width: 0; }
+
+/* School */
+.mail { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; display: grid; gap: 8px; }
+.mail .from { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.mail h3 { font-size: 15px; font-family: var(--body); font-weight: 700; }
+.sugg { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; border-top: 1px dashed var(--line); padding-top: 8px; }
+.sugg .when { font-size: 13px; color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+.sugg .detail { font-size: 13px; color: var(--muted); }
+.sugg .acts { display: flex; gap: 6px; }
+.sugg.added .when, .sugg.added .ttl { color: var(--ok); }
+.sugg.dismissed { opacity: 0.5; }
+
+/* Generic controls */
+input[type=text], select { font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; min-height: 40px; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 10px; padding: 8px 12px; font-weight: 700; min-height: 40px; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.small { min-height: 32px; padding: 4px 10px; font-size: 13px; }
+.btn:disabled { opacity: 0.55; cursor: default; }
+.empty { color: var(--muted); font-size: 14px; padding: 4px 0; }
+.note { font-size: 13px; color: var(--muted); }
+a { color: var(--accent); }
+
+/* Say-it bar */
+.say { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--bg); border-top: 1px solid var(--line); padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px)); }
+.say .wrap { display: grid; gap: 8px; padding-top: 10px; }
+.sayform { display: flex; gap: 8px; }
+.sayform input { flex: 1; min-width: 0; min-height: 46px; font-size: 16px; border-radius: 999px; padding: 10px 16px; background: var(--surface); }
+.sayform .btn { border-radius: 999px; min-height: 46px; padding: 0 18px; }
+.hint { font-size: 12px; color: var(--muted); }
+.confirm { background: var(--surface); border: 1px solid var(--accent); border-radius: var(--r); padding: 10px 12px; display: grid; gap: 8px; max-height: 45vh; overflow-y: auto; }
+.confirm ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+.confirm .acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.answer { font-size: 14px; white-space: pre-wrap; }
+@media (prefers-reduced-motion: no-preference) { .confirm { animation: rise .18s ease-out; } @keyframes rise { from { transform: translateY(6px); opacity: .6; } } }
+</style>
+
+<header>
+  <div class="wrap">
+    <div class="top">
+      <h1 id="title">Our Week</h1>
+      <div class="nav">
+        <button class="iconbtn" id="prev" aria-label="Previous week">&lsaquo;</button>
+        <button class="iconbtn" id="todayBtn">Today</button>
+        <button class="iconbtn" id="next" aria-label="Next week">&rsaquo;</button>
+      </div>
+    </div>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-tab="week" aria-selected="true">Week</button>
+      <button class="tab" role="tab" data-tab="meals" aria-selected="false">Meals</button>
+      <button class="tab" role="tab" data-tab="shop" aria-selected="false">Shopping <span class="count" id="shopCount" hidden></span></button>
+      <button class="tab" role="tab" data-tab="school" aria-selected="false">School <span class="count" id="schoolCount" hidden></span></button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap" id="main"></main>
+
+<div class="say">
+  <div class="wrap">
+    <div id="confirm" hidden></div>
+    <form class="sayform" id="sayForm" autocomplete="off">
+      <input type="text" id="sayInput" placeholder="e.g. Oli dentist next Thu 3:30, Kathy taking him" aria-label="Add anything">
+      <button class="btn primary" id="sayBtn" type="submit">Add</button>
+    </form>
+    <div class="hint" id="hint">Type or tap the mic on your keyboard. Events, meals, shopping, swaps, or ask "what's on Saturday?"</div>
+  </div>
+</div>
+
+<script>
+(() => {
+  // ---------- Family setup ----------
+  const KIDS = [
+    { id: "cora",  name: "Cora",  school: "Newborough primary (Year 4)", side: "R" },
+    { id: "oli",   name: "Oli",   school: "Northborough primary (Year 6)", side: "K" },
+    { id: "poppy", name: "Poppy", school: "AMVC (Year 8)", side: "K" },
+    { id: "leo",   name: "Leo",   school: "AMVC (Year 11)", side: "K" },
+    { id: "eric",  name: "Eric",  school: "AMVC (Year 11)", side: "R" },
+  ];
+  const KID = Object.fromEntries(KIDS.map(k => [k.id, k]));
+  const CAL_ID = "chaoticgloom@gmail.com";
+  // Recurring custody markers already in the shared calendar; the kid chips show these instead.
+  const HIDE_GCAL = /^(kathy kids|eric|cora\s*❤️?)$/i;
+  // Oli, Poppy and Leo: 2-2-3 on a 14-day cycle. Day 0 = Mon 26 Oct 2026 (matches "Kathy kids" in the shared calendar).
+  const ANCHOR = "2026-10-26";
+  const K_NIGHTS = new Set([0, 1, 4, 5, 6, 9, 10]);
+  const DEFAULT_QUERY = '(from:newborough.pdet.org.uk OR from:bromcomcloud.com OR from:arbor-education.com OR northborough OR "arthur mellows" OR amvc) -from:me newer_than:14d';
+
+  // ---------- Dates ----------
+  const pad = n => String(n).padStart(2, "0");
+  const key = d => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  const parseKey = k => { const [y, m, d] = k.split("-").map(Number); return new Date(y, m - 1, d, 12); };
+  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+  const mondayOf = d => addDays(new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12), -((d.getDay() + 6) % 7));
+  const dow = d => (d.getDay() + 6) % 7; // Mon = 0
+  const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+  const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const shortDate = d => d.getDate() + " " + MONTHS[d.getMonth()];
+  const longDate = d => DAYS[dow(d)].slice(0, 3) + " " + shortDate(d) + " " + d.getFullYear();
+  const todayKey = () => key(new Date());
+  const londonParts = iso => {
+    const f = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/London", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+    const p = Object.fromEntries(f.formatToParts(new Date(iso)).map(x => [x.type, x.value]));
+    return { date: p.year + "-" + p.month + "-" + p.day, time: (p.hour === "24" ? "00" : p.hour) + ":" + p.minute };
+  };
+
+  // ---------- State ----------
+  const S = {
+    tab: "week", monday: mondayOf(new Date()),
+    events: [], custody: [], meals: {}, shopping: [], suggestions: [], settings: {},
+    gcal: {}, gcalStatus: "", dbReady: false,
+    pending: null, busy: false,
+  };
+  try { const t = localStorage.getItem("ourweek.tab"); if (t) S.tab = t; } catch (e) {}
+  let db = null, sample = null, mcp = null;
+
+  // ---------- Custody ----------
+  function exceptionFor(kid, k) {
+    let hit = null;
+    for (const c of S.custody) if (c.kid === kid && c.from <= k && k <= c.to) hit = c;
+    return hit;
+  }
+  function baseNight(kid, d) {
+    const wd = dow(d);
+    if (KID[kid].side === "K") {
+      const diff = Math.round((parseKey(key(d)) - parseKey(ANCHOR)) / 864e5);
+      return K_NIGHTS.has(((diff % 14) + 14) % 14);
+    }
+    if (kid === "eric") return wd === 0 || wd === 4;
+    if (kid === "cora") return wd === 3 || wd === 4;
+    return false;
+  }
+  function nightHere(kid, d) {
+    const ex = exceptionFor(kid, key(d));
+    return ex ? !!ex.here : baseNight(kid, d);
+  }
+  // Returns [{kid, mode: "night"|"day", changed}]
+  function kidsOn(d) {
+    const out = [];
+    for (const k of KIDS) {
+      const ex = exceptionFor(k.id, key(d));
+      if (nightHere(k.id, d)) out.push({ kid: k.id, mode: "night", changed: !!ex });
+      else if (k.side === "R" && dow(d) === 5 && nightHere(k.id, addDays(d, -1))) out.push({ kid: k.id, mode: "day", changed: !!ex, note: "until 5:30" });
+    }
+    return out;
+  }
+  const dinnerCount = d => 2 + kidsOn(d).filter(x => x.mode === "night").length;
+
+  // ---------- Items for a day ----------
+  function itemsOn(k) {
+    const own = S.events.filter(e => e.date === k).map(e => ({ ...e, src: "app" }));
+    const g = (S.gcal[k] || []).map(e => ({ ...e, src: "gcal" }));
+    return [...own, ...g].sort((a, b) => (a.time || "00:00").localeCompare(b.time || "00:00"));
+  }
+
+  // ---------- Rendering ----------
+  const $ = id => document.getElementById(id);
+  const el = (tag, attrs = {}, ...kids) => {
+    const n = document.createElement(tag);
+    for (const [a, v] of Object.entries(attrs)) {
+      if (v == null || v === false) continue;
+      if (a === "class") n.className = v;
+      else if (a.startsWith("on")) n.addEventListener(a.slice(2), v);
+      else if (a === "style") n.setAttribute("style", v);
+      else n.setAttribute(a, v === true ? "" : v);
+    }
+    for (const c of kids.flat()) if (c != null && c !== false) n.append(c.nodeType ? c : String(c));
+    return n;
+  };
+  const kidChip = (id, extra = "", note = "") => el("span", { class: "kid " + extra, style: "--kc: var(--" + id + ")" }, KID[id].name + (note ? " " + note : ""));
+
+  function render() {
+    document.querySelectorAll(".tab").forEach(t => t.setAttribute("aria-selected", String(t.dataset.tab === S.tab)));
+    const showNav = S.tab === "week" || S.tab === "meals";
+    $("prev").hidden = $("next").hidden = $("todayBtn").hidden = !showNav;
+    const open = S.shopping.filter(i => !i.checked).length;
+    $("shopCount").hidden = !open; $("shopCount").textContent = open;
+    const pend = S.suggestions.reduce((n, s) => n + (s.items || []).filter(i => i.status === "pending").length, 0);
+    $("schoolCount").hidden = !pend; $("schoolCount").textContent = pend;
+    const main = $("main");
+    main.replaceChildren(...({ week: renderWeek, meals: renderMeals, shop: renderShop, school: renderSchool })[S.tab]());
+  }
+
+  function weekLabel() {
+    const end = addDays(S.monday, 6);
+    return "Week of " + shortDate(S.monday) + " to " + shortDate(end);
+  }
+
+  function renderWeek() {
+    const out = [el("div", { class: "status" + (S.gcalStatus.startsWith("!") ? " err" : "") }, weekLabel() + (S.gcalStatus ? " · " + S.gcalStatus.replace(/^!/, "") : ""))];
+    if (S.gcalAllow) out.push(el("button", { class: "btn small", onclick: allowCalendar }, "Show the shared Google Calendar here"));
+    const tk = todayKey();
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(S.monday, i), k = key(d);
+      const kids = kidsOn(d);
+      const items = itemsOn(k);
+      const meal = S.meals[k];
+      out.push(el("section", { class: "day" + (k === tk ? " today" : ""), id: "d-" + k },
+        el("div", { class: "dayhead" },
+          el("h2", {}, DAYS[i]), el("span", { class: "date" }, shortDate(d)),
+          el("span", { class: "heads" }, dinnerCount(d) + " for dinner")),
+        kids.length
+          ? el("div", { class: "kids" }, kids.map(x => kidChip(x.kid, (x.mode === "day" ? "daytime " : "") + (x.changed ? "changed" : ""), x.note || "")))
+          : el("div", { class: "nokids" }, "Just the two of you tonight"),
+        items.length ? el("ul", { class: "items" }, items.map(renderItem)) : null,
+        el("div", { class: "dinner" }, el("span", { class: "lbl" }, "Dinner"),
+          meal ? el("span", {}, meal.name) : el("span", { class: "none" }, "Not planned"))
+      ));
+    }
+    return out;
+  }
+
+  function renderItem(e) {
+    const kidsTxt = (e.kids || []).map(id => KID[id]?.name).filter(Boolean).join(", ");
+    const meta = [kidsTxt, e.who ? (e.who === "Both" ? "both of us" : e.who) : "", e.notes || ""].filter(Boolean).join(" · ");
+    return el("li", { class: "item" },
+      el("span", { class: "t" }, e.allDay || !e.time ? "all day" : e.time + (e.end ? "–" + e.end : "")),
+      el("span", { class: "what" }, e.title, e.src === "gcal" ? el("span", { class: "tag" }, "calendar") : null,
+        meta ? el("div", { class: "meta" }, meta) : null),
+      e.src === "app" ? el("button", { class: "x", "aria-label": "Delete " + e.title, onclick: () => removeDoc("events", e.id) }, "×") : el("span")
+    );
+  }
+
+  function renderMeals() {
+    const out = [el("div", { class: "status" }, weekLabel() + ". Type a meal and the ingredients go on the Tesco list, sized for whoever's home.")];
+    for (let i = 0; i < 7; i++) {
+      const d = addDays(S.monday, i), k = key(d), meal = S.meals[k];
+      const inputId = "meal-" + k;
+      const form = el("form", { class: "mealform", onsubmit: ev => {
+        ev.preventDefault();
+        const v = $(inputId).value.trim(); if (!v) return;
+        interpret("Dinner on " + longDate(d) + ": " + v + ". Add its ingredients to the shopping list.");
+      } }, el("input", { type: "text", id: inputId, placeholder: meal ? "Change meal" : "What's for dinner?", "aria-label": "Dinner for " + DAYS[i] }),
+        el("button", { class: "btn small", type: "submit" }, "Set"));
+      out.push(el("section", { class: "meal" },
+        el("div", { class: "mealrow" }, el("h3", {}, DAYS[i].slice(0, 3) + " " + d.getDate()),
+          el("span", { class: "name" }, meal ? meal.name : el("span", { class: "note" }, "Not planned")),
+          el("span", { class: "heads" }, dinnerCount(d) + " people"),
+          meal ? el("button", { class: "x", "aria-label": "Clear meal", onclick: () => removeDoc("meals", k) }, "×") : null),
+        form));
+    }
+    return out;
+  }
+
+  function renderShop() {
+    const out = [];
+    for (const shop of ["tesco", "aldi"]) {
+      const list = S.shopping.filter(i => (i.shop || "tesco") === shop).sort((a, b) => (a.checked - b.checked) || a.name.localeCompare(b.name));
+      const inputId = "add-" + shop;
+      const open = list.filter(i => !i.checked);
+      out.push(el("section", { class: "shop" },
+        el("div", { class: "shophead" },
+          el("h2", {}, shop === "tesco" ? "Tesco " : "Aldi ", el("span", { class: "sub" }, shop === "tesco" ? "online order" : "in person")),
+          shop === "tesco" && open.length ? el("button", { class: "btn small", onclick: () => copyList(open) }, "Copy for Tesco") : null,
+          list.some(i => i.checked) ? el("button", { class: "btn small", onclick: () => clearTicked(shop) }, "Clear ticked") : null),
+        list.length ? list.map(i => el("div", { class: "li" + (i.checked ? " done" : "") },
+          el("input", { type: "checkbox", id: "cb-" + i.id, checked: !!i.checked, onchange: ev => db.doc("shopping/" + i.id).update({ checked: ev.target.checked }).catch(dbErr) }),
+          el("label", { class: "nm", for: "cb-" + i.id }, i.name, i.qty ? el("span", { class: "q" }, " · " + i.qty) : null),
+          el("button", { class: "swap", onclick: () => db.doc("shopping/" + i.id).update({ shop: shop === "tesco" ? "aldi" : "tesco" }).catch(dbErr) }, shop === "tesco" ? "→ Aldi" : "→ Tesco")
+        )) : el("div", { class: "empty" }, shop === "tesco" ? "Nothing yet. Plan a meal or add items below." : "Nothing for Aldi yet."),
+        el("form", { class: "addrow", onsubmit: ev => {
+          ev.preventDefault();
+          const v = $(inputId).value.trim(); if (!v) return;
+          $(inputId).value = "";
+          v.split(/,| and /).map(s => s.trim()).filter(Boolean).forEach(name => addShopping({ name, shop }));
+        } }, el("input", { type: "text", id: inputId, placeholder: "Add items, comma separated", "aria-label": "Add to " + shop }),
+          el("button", { class: "btn small", type: "submit" }, "Add"))
+      ));
+    }
+    out.push(el("p", { class: "note" }, "Copy for Tesco puts the list on your clipboard, one item per line, ready for Tesco's multi-search box."));
+    return out;
+  }
+
+  function renderSchool() {
+    const out = [el("section", { class: "shop" },
+      el("div", { class: "shophead" }, el("h2", {}, "School emails"),
+        el("button", { class: "btn primary small", id: "scanBtn", disabled: S.busy, onclick: scanEmails }, S.busy === "scan" ? "Checking…" : "Check now")),
+      el("p", { class: "note" }, "Reads school emails from the last 14 days in your own Gmail and pulls out dates and things to do. Nothing is added until you tap Add."),
+      S.scanStatus ? el("div", { class: "status" + (S.scanStatus.startsWith("!") ? " err" : "") }, S.scanStatus.replace(/^!/, "")) : null
+    )];
+    const list = [...S.suggestions].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+    const withItems = list.filter(s => (s.items || []).length);
+    if (!withItems.length) out.push(el("div", { class: "empty" }, list.length ? "No dates or actions in the emails checked so far." : "No emails checked yet. Tap Check now."));
+    for (const s of withItems) {
+      out.push(el("section", { class: "mail" },
+        el("div", { class: "from" }, (s.sender || "") + (s.date ? " · " + shortDate(new Date(s.date)) : "")),
+        el("h3", {}, s.subject || "(no subject)"),
+        s.viewUrl ? el("a", { href: s.viewUrl, target: "_blank", rel: "noopener", class: "note" }, "Open email") : null,
+        s.items.map((it, idx) => el("div", { class: "sugg " + it.status },
+          el("div", {},
+            el("div", { class: "when" }, it.date ? longDate(parseKey(it.date)) + (it.time ? " " + it.time : "") : "No date"),
+            el("div", { class: "ttl" }, (it.kind === "todo" ? "To do: " : "") + it.title + ((it.kids || []).length ? " (" + it.kids.map(k => KID[k]?.name).filter(Boolean).join(", ") + ")" : "")),
+            it.detail ? el("div", { class: "detail" }, it.detail) : null),
+          it.status === "pending" ? el("div", { class: "acts" },
+            el("button", { class: "btn small primary", onclick: () => acceptSuggestion(s, idx) }, it.date ? "Add" : "Done"),
+            el("button", { class: "btn small", onclick: () => setSuggestion(s, idx, "dismissed") }, "Dismiss"))
+          : el("span", { class: "note" }, it.status === "added" ? "Added" : "Dismissed")
+        ))
+      ));
+    }
+    const q = S.settings.gmailQuery || DEFAULT_QUERY;
+    out.push(el("details", { class: "note" }, el("summary", {}, "Which emails count as school emails?"),
+      el("form", { class: "addrow", style: "margin-top:8px", onsubmit: ev => { ev.preventDefault(); saveQuery($("gq").value.trim()); } },
+        el("input", { type: "text", id: "gq", value: q, "aria-label": "Gmail search" }), el("button", { class: "btn small", type: "submit" }, "Save"))));
+    return out;
+  }
+
+  // ---------- Data writes ----------
+  function dbErr(e) {
+    const msg = e?.code === "invalid_argument" ? "You can view this planner but not change it." :
+      e?.code === "quota_exceeded" ? "The planner's storage is full. Clear old shopping or events." : "Couldn't save just now. Try again.";
+    flashHint(msg, true);
+  }
+  function removeDoc(col, id) { if (db) db.doc(col + "/" + id).delete().catch(dbErr); }
+  function addShopping({ name, qty, shop, source }) {
+    if (!db) return;
+    const existing = S.shopping.find(i => !i.checked && i.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+      const q = [existing.qty, qty].filter(Boolean).join(" + ");
+      return db.doc("shopping/" + existing.id).update({ qty: q || null }).catch(dbErr);
+    }
+    return db.collection("shopping").add({ name, qty: qty || null, shop: shop === "aldi" ? "aldi" : "tesco", checked: false, source: source || "manual", createdAt: Date.now() }).catch(dbErr);
+  }
+  async function clearTicked(shop) {
+    for (const i of S.shopping.filter(i => i.checked && (i.shop || "tesco") === shop)) await db.doc("shopping/" + i.id).delete().catch(dbErr);
+  }
+  async function copyList(items) {
+    const text = items.map(i => i.name).join("\n");
+    try { await navigator.clipboard.writeText(text); flashHint("Copied " + items.length + " items. Paste them into Tesco's multi-search."); }
+    catch (e) { flashHint("Couldn't copy on this device. Long-press the items to copy them instead.", true); }
+  }
+  function saveQuery(q) {
+    if (!db) return;
+    db.doc("settings/main").set({ ...S.settings, gmailQuery: q || DEFAULT_QUERY }).then(() => flashHint("Saved.")).catch(dbErr);
+  }
+
+  // ---------- Natural language ----------
+  function contextText() {
+    const lines = [];
+    const start = parseKey(todayKey());
+    for (let i = 0; i < 14; i++) {
+      const d = addDays(start, i), k = key(d);
+      const kids = kidsOn(d).map(x => KID[x.kid].name + (x.mode === "day" ? " (daytime, leaves 5:30pm)" : ""));
+      const items = itemsOn(k).map(e => (e.time ? e.time + " " : "") + e.title);
+      lines.push(longDate(d) + " [" + k + "]: kids here: " + (kids.join(", ") || "none") + "; dinner for " + dinnerCount(d) +
+        (S.meals[k] ? " (" + S.meals[k].name + ")" : "") + (items.length ? "; on: " + items.join("; ") : ""));
+    }
+    return lines.join("\n");
+  }
+  function dateTable() {
+    const start = parseKey(todayKey()), rows = [];
+    for (let i = -7; i < 63; i++) { const d = addDays(start, i); rows.push(longDate(d) + " = " + key(d)); }
+    return rows.join("\n");
+  }
+
+  function buildPrompt(text) {
+    return `You turn short messages into actions for a family planner used by Reash and Kathy, a couple in Peterborough, UK.
+Today is ${longDate(new Date())} (${todayKey()}). Use this table for dates; "next Thursday" means the coming Thursday unless today is Thursday:
+${dateTable()}
+
+Children (use these ids): cora = Cora, 9, Newborough primary Y4; oli = Oli, 10, Northborough primary Y6; poppy = Poppy, 13, AMVC Y8; leo = Leo, 15, AMVC Y11; eric = Eric, 15, AMVC Y11.
+Kathy's kids are Oli, Poppy and Leo. Reash's kids are Eric and Cora. "R kids" means Eric and Cora, "K kids" means Oli, Poppy and Leo.
+Shops: "tesco" is the weekly online order (default for groceries and meal ingredients); "aldi" is in-person top-ups (use only if they say Aldi).
+
+The next 14 days as the planner sees them:
+${contextText()}
+
+Message: """${text}"""
+
+Reply with ONLY a JSON object {"actions":[...]} using these action shapes:
+{"type":"event","title":string,"date":"YYYY-MM-DD","time":"HH:MM" or null,"end":"HH:MM" or null,"kids":[ids],"who":"Reash"|"Kathy"|"Both" or null,"notes":string or null,"repeatWeeks":number or null}
+{"type":"shopping","items":[{"name":string,"qty":string or null,"shop":"tesco"|"aldi"}]}
+{"type":"meal","date":"YYYY-MM-DD","name":string,"ingredients":[{"name":string,"qty":string,"shop":"tesco"}]}
+{"type":"custody","kid":id,"from":"YYYY-MM-DD","to":"YYYY-MM-DD","here":true|false,"note":string or null}
+{"type":"answer","text":string}
+Rules:
+- One message can produce several actions.
+- Titles are short and plain ("Dentist", "Swimming"), without the child's name (that goes in kids).
+- repeatWeeks: for "every Tuesday" style requests, the number of weekly repeats to create (default 8, max 12, stop before the Christmas holidays if they say term time).
+- meal: ingredients sized for the dinner headcount on that date, in UK supermarket quantities (e.g. "500g", "1 pack"). Leave out salt, pepper, oil and other cupboard basics.
+- custody: "here": true means the child sleeps at ours on those nights. Use for swaps, holidays and changes. from/to are night dates, inclusive.
+- A question gets one "answer" action, written briefly and warmly, using the 14 days above. Use UK date style.
+- If the message is unclear, return an "answer" asking one short question.`;
+  }
+
+  async function interpret(text) {
+    if (!sample) { flashHint("Adding by message needs Claude, which isn't available in this view.", true); return; }
+    if (S.busy) return;
+    S.busy = "say"; setSayBusy(true);
+    showConfirm(el("div", { class: "answer" }, "Thinking…"));
+    try {
+      const res = await sample.json(buildPrompt(text), { modelTier: "quick", cache: false });
+      const actions = Array.isArray(res?.actions) ? res.actions : [];
+      if (!actions.length) throw { code: "invalid_json" };
+      S.pending = actions;
+      renderConfirm(actions, text);
+      $("sayInput").value = "";
+    } catch (e) {
+      const c = e?.code;
+      const msg = c === "not_granted" || c === "sampling_disabled" ? "Claude isn't switched on for this page, so messages can't be read. Use the lists and meal boxes directly." :
+        c === "rate_limited" ? "That's a lot of requests in a short time. Give it a minute and try again." :
+        c === "invalid_json" ? "I couldn't turn that into anything. Try saying it a different way." :
+        c === "session_expired" ? "You've been signed out of Claude. Sign in again and retry." :
+        c === "cancelled" ? "" : "Something went wrong reaching Claude. Try again.";
+      if (msg) showConfirm(el("div", { class: "answer" }, msg), true); else hideConfirm();
+    } finally { S.busy = false; setSayBusy(false); }
+  }
+
+  function describe(a) {
+    const kids = k => (k || []).map(id => KID[id]?.name).filter(Boolean).join(", ");
+    if (a.type === "event") return a.title + " · " + (a.date ? longDate(parseKey(a.date)) : "?") + (a.time ? " " + a.time : "") + (kids(a.kids) ? " · " + kids(a.kids) : "") + (a.who ? " · " + a.who : "") + (a.repeatWeeks > 1 ? " · weekly × " + a.repeatWeeks : "");
+    if (a.type === "shopping") return "Shopping: " + (a.items || []).map(i => i.name + (i.qty ? " (" + i.qty + ")" : "") + (i.shop === "aldi" ? " at Aldi" : "")).join(", ");
+    if (a.type === "meal") return "Dinner " + (a.date ? longDate(parseKey(a.date)) : "?") + ": " + a.name + " · " + (a.ingredients || []).length + " ingredients to Tesco";
+    if (a.type === "custody") return (KID[a.kid]?.name || a.kid) + (a.here ? " with us" : " not with us") + " " + (a.from === a.to ? "on the night of " + longDate(parseKey(a.from)) : "nights " + longDate(parseKey(a.from)) + " to " + longDate(parseKey(a.to))) + (a.note ? " · " + a.note : "");
+    return "";
+  }
+
+  function renderConfirm(actions) {
+    const answers = actions.filter(a => a.type === "answer");
+    const todo = actions.filter(a => a.type !== "answer" && describe(a));
+    const box = el("div", { class: "confirm" },
+      answers.map(a => el("div", { class: "answer" }, a.text)),
+      todo.length ? el("ul", {}, todo.map(a => el("li", {}, describe(a)))) : null,
+      el("div", { class: "acts" },
+        todo.length ? el("button", { class: "btn primary small", onclick: () => saveActions(todo) }, "Save") : null,
+        el("button", { class: "btn small", onclick: hideConfirm }, todo.length ? "Cancel" : "OK")));
+    showConfirm(box);
+  }
+
+  async function saveActions(actions) {
+    if (!db) { flashHint("Saving isn't available in this view.", true); return; }
+    hideConfirm();
+    try {
+      for (const a of actions) {
+        if (a.type === "event" && a.date) {
+          const n = Math.min(Math.max(parseInt(a.repeatWeeks) || 1, 1), 12);
+          const series = n > 1 ? "s" + Date.now() : null;
+          for (let w = 0; w < n; w++) {
+            await db.collection("events").add({
+              title: String(a.title || "Event"), date: key(addDays(parseKey(a.date), 7 * w)), time: a.time || null, end: a.end || null,
+              kids: (a.kids || []).filter(k => KID[k]), who: a.who || null, notes: a.notes || null, series, source: "message", createdAt: Date.now(),
+            });
+          }
+        } else if (a.type === "shopping") {
+          for (const i of a.items || []) if (i.name) await addShopping({ name: String(i.name), qty: i.qty, shop: i.shop });
+        } else if (a.type === "meal" && a.date) {
+          await db.doc("meals/" + a.date).set({ date: a.date, name: String(a.name), ingredients: a.ingredients || [], updatedAt: Date.now() });
+          for (const i of a.ingredients || []) if (i.name) await addShopping({ name: String(i.name), qty: i.qty, shop: i.shop, source: "meal" });
+        } else if (a.type === "custody" && KID[a.kid] && a.from) {
+          await db.collection("custody").add({ kid: a.kid, from: a.from, to: a.to || a.from, here: !!a.here, note: a.note || null, createdAt: Date.now() });
+        }
+      }
+      flashHint("Saved.");
+    } catch (e) { dbErr(e); }
+  }
+
+  // ---------- School email scan ----------
+  const decode = s => { const t = document.createElement("textarea"); t.innerHTML = s; return t.value; };
+  function mcpMessage(e, server) {
+    switch (e?.code) {
+      case "server_not_connected": case "server_not_found": return "Add " + server + " in claude.ai Settings → Connectors, then try again.";
+      case "needs_reauth": return "Reconnect " + server + " in claude.ai Settings → Connectors.";
+      case "not_in_manifest": case "approval_required": return server + " access wasn't allowed for this page.";
+      case "selection_required": return "Choose which " + server + " account to use when claude.ai asks, then try again.";
+      case "blocked_by_policy": return server + " is blocked for your account.";
+      case "server_unavailable": return server + " isn't answering right now. Try again shortly.";
+      default: return "Couldn't reach " + server + ".";
+    }
+  }
+
+  async function scanEmails() {
+    if (!mcp) { S.scanStatus = "!Gmail isn't available in this view."; render(); return; }
+    if (!sample) { S.scanStatus = "!Reading emails needs Claude, which isn't available in this view."; render(); return; }
+    S.busy = "scan"; S.scanStatus = "Looking for school emails…"; render();
+    try {
+      const q = S.settings.gmailQuery || DEFAULT_QUERY;
+      const res = await mcp.callTool("Gmail", "search_threads", { query: q, pageSize: 15 }, { cache: false });
+      const threads = res.payload?.threads || [];
+      const seen = new Set(S.suggestions.map(s => s.id));
+      const fresh = threads.filter(t => !seen.has(t.id)).slice(0, 8);
+      if (!fresh.length) { S.scanStatus = threads.length ? "No new school emails since the last check." : "No school emails in the last 14 days."; return; }
+      S.scanStatus = "Reading " + fresh.length + " new email" + (fresh.length > 1 ? "s" : "") + "…"; render();
+      const full = [];
+      for (const t of fresh) {
+        const r = await mcp.callTool("Gmail", "get_thread", { threadId: t.id, messageFormat: "PLAIN_TEXT" }, { cache: false });
+        const msgs = r.payload?.messages || [];
+        const last = msgs[msgs.length - 1] || t.messages?.[0] || {};
+        const body = decode(msgs.map(m => m.plaintextBody || m.snippet || "").join("\n---\n")).replace(/\n{3,}/g, "\n\n").slice(0, 5000);
+        full.push({ id: t.id, subject: last.subject || t.messages?.[0]?.subject || "", sender: last.sender || "", date: last.date || "", viewUrl: r.payload?.viewUrl || t.viewUrl || "", body });
+      }
+      S.scanStatus = "Pulling out dates and actions…"; render();
+      const prompt = `Today is ${longDate(new Date())}. These are school emails sent to a parent in Peterborough, UK.
+Children: cora = Cora, Newborough primary Year 4; oli = Oli, Northborough primary Year 6; poppy = Poppy, AMVC (Arthur Mellows Village College) Year 8; leo = Leo, AMVC Year 11; eric = Eric, AMVC Year 11. Bromcom emails come from AMVC.
+For each email, list what a busy parent needs in their calendar or to-do list: events with dates (trips, non-uniform days, parents' evenings, performances, inset days, club start dates), deadlines (forms, payments, bookings) and things to bring. Skip generic content. Only include future dates. Match each item to children by school and year group (an AMVC Year 11 email is for leo and eric).
+Reply with ONLY JSON: {"emails":[{"id":string,"items":[{"kind":"event"|"todo","title":string (short),"date":"YYYY-MM-DD" or null,"time":"HH:MM" or null,"kids":[ids],"detail":string (one short line, include cost or what to bring)}]}]}
+
+${full.map(f => `=== id: ${f.id}\nFrom: ${f.sender}\nDate: ${f.date}\nSubject: ${f.subject}\n${f.body}`).join("\n\n")}`;
+      const out = await sample.json(prompt, { modelTier: "default" });
+      const byId = Object.fromEntries((out?.emails || []).map(e => [String(e.id), e.items || []]));
+      for (const f of full) {
+        const items = (byId[f.id] || []).filter(i => i && i.title).map(i => ({
+          kind: i.kind === "todo" ? "todo" : "event", title: String(i.title), date: /^\d{4}-\d{2}-\d{2}$/.test(i.date || "") ? i.date : null,
+          time: i.time || null, kids: (i.kids || []).filter(k => KID[k]), detail: i.detail || "", status: "pending" }));
+        await db.doc("suggestions/" + f.id).set({ subject: f.subject, sender: f.sender, date: f.date, viewUrl: f.viewUrl, items, scannedAt: Date.now() });
+      }
+      const n = Object.values(byId).reduce((a, b) => a + b.length, 0);
+      S.scanStatus = "Checked " + full.length + " email" + (full.length > 1 ? "s" : "") + ", found " + n + " thing" + (n === 1 ? "" : "s") + " to review.";
+    } catch (e) {
+      if ((e && typeof e === "object" && "server" in e) || ["server_not_connected", "needs_reauth", "not_in_manifest", "approval_required", "selection_required", "server_unavailable", "blocked_by_policy", "tool_error"].includes(e?.code)) S.scanStatus = "!" + mcpMessage(e, "Gmail");
+      else if (e?.code === "not_granted" || e?.code === "sampling_disabled") S.scanStatus = "!Claude isn't switched on for this page, so emails can't be read.";
+      else if (e?.code === "rate_limited") S.scanStatus = "!Too many requests just now. Try again in a minute.";
+      else if (e?.code === "invalid_json") S.scanStatus = "!Couldn't make sense of those emails this time. Try again.";
+      else S.scanStatus = "!Something went wrong while checking. Try again.";
+    } finally { S.busy = false; render(); }
+  }
+
+  async function setSuggestion(s, idx, status) {
+    const items = s.items.map((it, i) => i === idx ? { ...it, status } : it);
+    await db.doc("suggestions/" + s.id).update({ items }).catch(dbErr);
+  }
+  async function acceptSuggestion(s, idx) {
+    const it = s.items[idx];
+    if (it.date) {
+      await db.collection("events").add({ title: (it.kind === "todo" ? "Due: " : "") + it.title, date: it.date, time: it.time || null, end: null,
+        kids: it.kids || [], who: null, notes: it.detail || null, series: null, source: "email", createdAt: Date.now() }).catch(dbErr);
+      await setSuggestion(s, idx, "added");
+    } else await setSuggestion(s, idx, "added");
+  }
+
+  // ---------- Confirm / hint UI ----------
+  function showConfirm(node) { const c = $("confirm"); c.replaceChildren(node.classList?.contains("confirm") ? node : el("div", { class: "confirm" }, node, el("div", { class: "acts" }, el("button", { class: "btn small", onclick: hideConfirm }, "OK")))); c.hidden = false; }
+  function hideConfirm() { $("confirm").hidden = true; $("confirm").replaceChildren(); S.pending = null; }
+  function setSayBusy(b) { $("sayBtn").disabled = b; $("sayBtn").textContent = b ? "…" : "Add"; }
+  let hintTimer;
+  const HINT = $("hint").textContent;
+  function flashHint(msg, err) {
+    const h = $("hint"); h.textContent = msg; h.style.color = err ? "var(--warn)" : "var(--ok)";
+    clearTimeout(hintTimer); hintTimer = setTimeout(() => { h.textContent = HINT; h.style.color = ""; }, 4000);
+  }
+
+  // ---------- Google Calendar ----------
+  let unwatch = null;
+  function watchCalendar() {
+    if (!mcp) return;
+    if (unwatch) unwatch();
+    const start = key(addDays(S.monday, -7)), end = key(addDays(S.monday, 21));
+    unwatch = mcp.watchTool("Google Calendar", "list_events",
+      { calendarId: CAL_ID, startTime: start + "T00:00:00", endTime: end + "T00:00:00", orderBy: "startTime", pageSize: 250 },
+      ev => {
+        if (ev.type === "error") {
+          const c = ev.error?.code;
+          if (["needs_reauth", "server_not_connected", "blocked_by_policy", "approval_required", "not_in_manifest"].includes(c)) S.gcal = {};
+          S.gcalAllow = c === "approval_required";
+          S.gcalStatus = c === "approval_required" ? "" : "!" + mcpMessage(ev.error, "Google Calendar");
+          render(); return;
+        }
+        S.gcalAllow = false;
+        ingestCalendar(ev.result.payload);
+        S.gcalStatus = "shared calendar" + (ev.result.cache?.revalidating ? " (refreshing)" : "");
+        render();
+      }, { refetchInterval: 5 * 60 * 1000 });
+  }
+  async function allowCalendar() {
+    try {
+      const start = key(addDays(S.monday, -7)), end = key(addDays(S.monday, 21));
+      const r = await mcp.callTool("Google Calendar", "list_events", { calendarId: CAL_ID, startTime: start + "T00:00:00", endTime: end + "T00:00:00", orderBy: "startTime", pageSize: 250 });
+      S.gcalAllow = false; ingestCalendar(r.payload); S.gcalStatus = "shared calendar"; render();
+    } catch (e) { S.gcalStatus = "!" + mcpMessage(e, "Google Calendar"); render(); }
+  }
+  function ingestCalendar(p) {
+    const map = {};
+    for (const e of p?.events || []) {
+      if (e.status === "cancelled" || !e.summary || HIDE_GCAL.test(e.summary.trim())) continue;
+      if (e.start?.date) {
+        let d = parseKey(e.start.date.slice(0, 10)); const end = parseKey((e.end?.date || e.start.date).slice(0, 10));
+        do { (map[key(d)] ||= []).push({ id: e.id, title: e.summary, allDay: true }); d = addDays(d, 1); } while (d < end);
+      } else if (e.start?.dateTime) {
+        const s = londonParts(e.start.dateTime), en = e.end?.dateTime ? londonParts(e.end.dateTime) : null;
+        (map[s.date] ||= []).push({ id: e.id, title: e.summary, time: s.time, end: en && en.date === s.date ? en.time : null });
+      }
+    }
+    S.gcal = map;
+  }
+
+  // ---------- Wiring ----------
+  document.querySelectorAll(".tab").forEach(t => t.addEventListener("click", () => {
+    S.tab = t.dataset.tab; try { localStorage.setItem("ourweek.tab", S.tab); } catch (e) {}
+    render(); window.scrollTo(0, 0);
+  }));
+  $("prev").onclick = () => { S.monday = addDays(S.monday, -7); render(); watchCalendar(); };
+  $("next").onclick = () => { S.monday = addDays(S.monday, 7); render(); watchCalendar(); };
+  $("todayBtn").onclick = () => {
+    const was = key(S.monday); S.monday = mondayOf(new Date()); render();
+    if (was !== key(S.monday)) watchCalendar();
+    document.getElementById("d-" + todayKey())?.scrollIntoView({ block: "center", behavior: "smooth" });
+  };
+  $("sayForm").addEventListener("submit", ev => { ev.preventDefault(); const v = $("sayInput").value.trim(); if (v) interpret(v); });
+
+  render();
+
+  // ---------- Capabilities ----------
+  const claude = window.claude;
+  if (!claude?.use) { $("hint").textContent = "Open this in Claude to save and share changes."; return; }
+  claude.use("db").then(d => {
+    db = d;
+    if (!db) { $("hint").textContent = "Sign in to Claude to see and change the shared planner."; return; }
+    const sub = (col, fn) => db.collection(col).onSnapshot(snap => { fn(snap.docs.map(x => ({ id: x.id, ...x.data() }))); render(); },
+      e => { if (e?.code !== "revoked") flashHint("Lost connection to the shared planner. Reload to reconnect.", true); });
+    sub("events", v => S.events = v);
+    sub("custody", v => S.custody = v);
+    sub("meals", v => S.meals = Object.fromEntries(v.map(m => [m.id, m])));
+    sub("shopping", v => S.shopping = v);
+    sub("suggestions", v => S.suggestions = v);
+    sub("settings", v => S.settings = v.find(x => x.id === "main") || {});
+  });
+  claude.use("sample").then(s => { sample = s; if (!s) { $("sayForm").hidden = true; $("hint").textContent = "Adding by message isn't available here. Use the Meals and Shopping tabs."; } });
+  claude.use("mcp").then(m => { mcp = m; if (m) watchCalendar(); else { S.gcalStatus = ""; render(); } });
+})();
+</script>
